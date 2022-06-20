@@ -1,0 +1,165 @@
+#####테이블 생성(+제약조건 부여) : fk가 없는 테이블부터 생성#####
+#constraints: notnull/check/unique/pk/fk
+
+#고객
+
+CREATE TABLE CUSTOMER
+(
+	customer_id           NUMBER(4) CONSTRAINT CUSTOMER_PK PRIMARY KEY,
+	name                  CHAR(24) NOT NULL,
+	personal_no           NUMBER(13) NOT NULL,
+	phone                 CHAR(13) NOT NULL,
+	address               VARCHAR2(45) NOT NULL,
+	job                   CHAR(18) NOT NULL,
+	credit_class          NUMBER(2) NOT NULL,
+	CONSTRAINT PERSONAL_NO_UK UNIQUE(personal_no),
+	CONSTRAINT CREDIT_CLASS_CK1 CHECK(credit_class BETWEEN 1 AND 7)
+);
+
+
+#지점
+
+CREATE TABLE BANKBRANCH
+(
+	branch_no             CHAR(5) CONSTRAINT BANKBRANCH_PK PRIMARY KEY,
+	name                  CHAR(18) NOT NULL,
+	city                  CHAR(16) NOT NULL,
+	CONSTRAINT BNAME_UK UNIQUE(name)
+);
+
+
+#카드타입
+
+CREATE TABLE CARDTYPE
+(
+	cardname              CHAR(8) CONSTRAINT  CARDTYPE_PK PRIMARY KEY,
+	credit_class          NUMBER(2) NOT NULL,
+	CONSTRAINT CREDIT_CLASS_CK2 CHECK(credit_class BETWEEN 1 AND 7)
+);
+
+
+#예금타입
+
+CREATE TABLE DEPOSITTYPE
+(
+	productname           CHAR(22) CONSTRAINT  DEPOSITTYPE_PK PRIMARY KEY,
+	base_rate             NUMBER(4,2) NOT NULL,
+	CONSTRAINT BASE_RATE_CK CHECK(base_rate >= 1) 
+);
+
+
+#대출타입
+
+CREATE TABLE LOANTYPE
+(
+	productname           CHAR(14) CONSTRAINT  LOANTYPE_PK PRIMARY KEY,
+	base_rate             NUMBER(4,2) NOT NULL,
+	credit_class          NUMBER(2) NOT NULL,
+	CONSTRAINT CREDIT_CLASS_CK3 CHECK(credit_class BETWEEN 1 AND 7),
+	CONSTRAINT LOAN_RATE_CK CHECK(base_rate >= 3)
+);
+
+
+
+#####여기부터 fk가 존재하는 테이블#####
+
+
+#계좌
+
+CREATE TABLE ACCOUNT
+(
+	account_no            NUMBER(11),
+	customer_id           NUMBER(4),
+	enroll_date           DATE NOT NULL,
+	branch_no             CHAR(5) NOT NULL,
+	CONSTRAINT  ACCOUNT_PK PRIMARY KEY (account_no,customer_id),
+	CONSTRAINT  R_4 FOREIGN KEY (customer_id) REFERENCES CUSTOMER(customer_id) ON DELETE CASCADE,
+	CONSTRAINT  R_10 FOREIGN KEY (branch_no) REFERENCES BANKBRANCH(branch_no) ON DELETE CASCADE
+);
+
+
+
+#카드
+
+CREATE TABLE CARD
+(
+	card_id               NUMBER(16),
+	account_no            NUMBER(11),
+	customer_id           NUMBER(4),
+	cardname              CHAR(8) NOT NULL,
+	enroll_date           DATE  NOT NULL,
+	expire_date           DATE  NOT NULL,
+	credit_class          NUMBER(2)  NOT NULL,
+	CONSTRAINT  CARD_PK PRIMARY KEY (card_id,account_no,customer_id),
+	CONSTRAINT  R_5 FOREIGN KEY (account_no,customer_id) REFERENCES ACCOUNT(account_no,customer_id) ON DELETE CASCADE,
+	CONSTRAINT  R_24 FOREIGN KEY (cardname) REFERENCES CARDTYPE(cardname) ON DELETE CASCADE,
+	CONSTRAINT CREDIT_CLASS_CK4 CHECK(credit_class BETWEEN 1 AND 7)
+);
+
+
+#예금계좌
+
+CREATE TABLE DEPOSIT_ACCOUNT
+(
+	deposit_no            CHAR(5),
+	account_no            NUMBER(11),
+	customer_id           NUMBER(4),
+	amount                NUMBER(10)  NOT NULL,
+	productname           CHAR(22)  NOT NULL,
+	saving_amount         NUMBER(7)  NULL,
+	duration              NUMBER(4)  NULL,
+	contents              CHAR(50)  NULL,
+	CONSTRAINT  DEPOSIT_ACCOUNT_PK PRIMARY KEY (deposit_no,account_no,customer_id),
+	CONSTRAINT  R_8 FOREIGN KEY (productname) REFERENCES DEPOSITTYPE(productname) ON DELETE CASCADE,
+	CONSTRAINT  R_9 FOREIGN KEY (account_no,customer_id) REFERENCES ACCOUNT(account_no,customer_id) ON DELETE CASCADE
+);
+
+
+
+
+#대출계좌
+
+CREATE TABLE LOAN_ACCOUNT
+(
+	loan_no               CHAR(5),
+	account_no            NUMBER(11),
+	customer_id           NUMBER(4),
+	productname           CHAR(14)  NOT NULL,
+	loan_date             DATE NOT NULL,
+	duration              NUMBER(4)  NOT NULL,
+	amount                NUMBER(10)  NOT NULL,
+	CONSTRAINT  LOAN_ACCOUNT_PK PRIMARY KEY (loan_no,account_no,customer_id),
+	CONSTRAINT  R_7 FOREIGN KEY (productname) REFERENCES LOANTYPE(productname) ON DELETE CASCADE,
+	CONSTRAINT  R_20 FOREIGN KEY (account_no,customer_id) REFERENCES ACCOUNT(account_no,customer_id) ON DELETE CASCADE,
+	CONSTRAINT DURATION_CK CHECK(duration >= 1)
+);
+
+
+
+#예금하다
+
+CREATE TABLE DEPOSIT
+(
+	deposit_no            CHAR(5),
+	account_no            NUMBER(11),
+	customer_id           NUMBER(4),
+	CONSTRAINT  DEPOSIT_PK PRIMARY KEY (deposit_no,account_no,customer_id),
+	CONSTRAINT  R_14 FOREIGN KEY (customer_id) REFERENCES CUSTOMER(customer_id) ON DELETE CASCADE,
+	CONSTRAINT  R_16 FOREIGN KEY (deposit_no,account_no,customer_id) REFERENCES DEPOSIT_ACCOUNT(deposit_no,account_no,customer_id) ON DELETE CASCADE
+);
+
+
+
+#갚다
+
+
+CREATE TABLE REPAY
+(
+	customer_id           NUMBER(4),
+	loan_no               CHAR(5),
+	account_no            NUMBER(11),
+	CONSTRAINT  REPAY_PK PRIMARY KEY (customer_id,loan_no,account_no),
+	CONSTRAINT  R_21 FOREIGN KEY (customer_id) REFERENCES CUSTOMER(customer_id) ON DELETE CASCADE,
+	CONSTRAINT  R_23 FOREIGN KEY (loan_no,account_no,customer_id) REFERENCES LOAN_ACCOUNT(loan_no,account_no,customer_id) ON DELETE CASCADE
+);
+
